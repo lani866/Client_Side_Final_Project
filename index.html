@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Fashion News Explorer</title>
+  <!-- reuse your styles.css from before -->
+  <link rel="stylesheet" href="styles.css" />
+  <!-- D3.js v7 -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="nav-left" id="localTime"></div>
+    <div class="logo">FASHION X</div>
+    <div class="search-container">
+        <input
+          type="text"
+          id="keywordInput"
+          placeholder="Search keywords…"
+          aria-label="Search keywords"
+        />
+        <button id="searchBtn">Search</button>
+      </div>
+   
+  </header>
+
+  <main>
+    <section class="hero">
+        <h1 id="siteTitle">Fashionista</h1>
+        <p>Choose your fashion category</p>
+
+        <div class="dropdown">
+          <select id="categorySelect">
+            <option value="" disabled selected>Choose category</option>
+            <option value="latest">Latest</option>
+            <option value="luxury">Luxury</option>
+            <option value="technology">Technology</option>
+            <option value="trend">Trend</option>
+            <option value="marketing">Marketing</option>
+          </select>
+        </div>
+      </section>
+
+    <section class="gallery" id="gallery">
+
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; 2025 Fashionista</p>
+  </footer>
+
+  <script>
+    // 1) local time
+    function tick() {
+      const now = new Date();
+      const opts = { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true };
+      document.getElementById('localTime')
+              .textContent = `Local ${now.toLocaleTimeString(undefined,opts)}`;
+    }
+    setInterval(tick,1000); tick();
+
+    // 2) config
+    const NEWSAPI_KEY = 'a80576b7a86d4cc785e1535f229cad42';
+    const PROXY       = 'https://api.allorigins.win/raw?url=';
+
+    // 2a) reset on logo click
+    const logo = document.querySelector('.logo');
+  logo.style.cursor = 'pointer';
+  logo.addEventListener('click', () => {
+    window.location.reload();
+  });
+
+  const title = document.getElementById('siteTitle');
+title.style.cursor = 'pointer';
+title.addEventListener('click', () => {
+  // reload the page back to its original state
+  window.location.reload();
+});
+
+// 2b) free‐text keyword search 
+const searchBtn    = document.getElementById('searchBtn');
+    const keywordInput = document.getElementById('keywordInput');
+    searchBtn.addEventListener('click', () => {
+      const term = keywordInput.value.trim();
+      if (!term) return alert('Please enter a search term.');
+      fetchNews(term);
+    });
+    keywordInput.addEventListener('keyup', e => {
+      if (e.key === 'Enter') searchBtn.click();
+    });
+
+
+    // 3) dropdown → fetch
+    document.getElementById('categorySelect')
+      .addEventListener('change', evt => {
+        const cat = evt.target.value;
+        let q;
+        switch(cat) {
+          case 'latest':     q='fashion';             break;
+          case 'luxury':     q='luxury fashion brands';break;
+          case 'technology': q='fashion technology';   break;
+          case 'trend':      q='fashion trend';        break;
+          case 'marketing':  q='fashion marketing';    break;
+          default: return;
+        }
+        fetchNews(q);
+      });
+
+    // 4) fetch & render
+    function fetchNews(query) {
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = '<p class="loading">Loading…</p>';
+
+      const endpoint =
+        `https://newsapi.org/v2/everything?language=en` +
+        `&q=${encodeURIComponent(query)}` +
+        `&pageSize=12&sortBy=publishedAt&apiKey=${NEWSAPI_KEY}`;
+
+      fetch(PROXY + encodeURIComponent(endpoint))
+        .then(r => r.json())
+        .then(data => {
+          if (data.status==='error') throw new Error(data.message);
+          renderNews(data.articles);
+        })
+        .catch(err => {
+          console.error(err);
+          gallery.innerHTML = '<p class="error">Failed to load articles.</p>';
+        });
+    }
+
+    function renderNews(articles) {
+      const gallery = document.getElementById('gallery');
+      gallery.innerHTML = '';
+      articles
+        .filter(a => a.urlToImage)
+        .forEach(a => {
+          const card = document.createElement('div');
+          card.className = 'art-card';
+          card.innerHTML = `
+            <a href="${a.url}" target="_blank" rel="noopener">
+              <img src="${a.urlToImage}" alt="${a.title}" />
+              <div class="info">
+                <h2>${a.title}</h2>
+                <p>${a.source.name}</p>
+                <p><small>${new Date(a.publishedAt)
+                  .toLocaleDateString()}</small></p>
+              </div>
+            </a>`;
+          gallery.appendChild(card);
+        });
+    }
+  </script>
+
+</body>
+</html>
